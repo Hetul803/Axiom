@@ -1,0 +1,5 @@
+{
+  "status": "not_run",
+  "reason": "Official arc-agi runtime and public game assets are unavailable in this container; GitHub/API and network package installation are blocked.",
+  "games": []
+}

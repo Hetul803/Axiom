@@ -1,0 +1,26 @@
+[
+  {
+    "file": "notebook_cells/01_install_arc_runtime.py",
+    "type": "code"
+  },
+  {
+    "file": "notebook_cells/02_environment_and_runtime.py",
+    "type": "code"
+  },
+  {
+    "file": "notebook_cells/03_write_axiom_core.py",
+    "type": "code"
+  },
+  {
+    "file": "notebook_cells/04_define_competition_agent.py",
+    "type": "code"
+  },
+  {
+    "file": "notebook_cells/05_competition_harness.py",
+    "type": "code"
+  },
+  {
+    "file": "notebook_cells/06_local_diagnostics.py",
+    "type": "code"
+  }
+]
