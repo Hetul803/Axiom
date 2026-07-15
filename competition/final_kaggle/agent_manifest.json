@@ -1,0 +1,29 @@
+{
+  "agent_sha256": "8fa165a7abe66613e1cec31827b03d6c5ed413c071d09668fa8330e2c4747a3c",
+  "generated_at": "2026-07-15T19:17:04Z",
+  "included_source_count": 21,
+  "source_commit": "1ad76cd2c82c0eeaffd9bd5cbf36bc5d4bc685db",
+  "source_hashes": {
+    "axiom_core/causality/action_semantics.py": "53d519df128e6026c09c62ce645ea5e908d96d616ed6ef9809cf2993a5eb51b8",
+    "axiom_core/causality/hypotheses.py": "d1270c87c4454feba7ad3165d8c70f3eba6bddb1d8ebd5db3665fc835e8261a6",
+    "axiom_core/causality/interpreter.py": "8f2a189cfaec95a0e6130d2bdb0f5b22918ff39b6c9039968cd828211780269b",
+    "axiom_core/causality/particles.py": "7514b1c9b747311ed0e13ec34e8df0169330619862f05792d67154995cc2b44d",
+    "axiom_core/causality/rule_induction.py": "2c3d2a61b51aa184b8b8d324abd140c76f641e95776f6dfef51baa97925dd658",
+    "axiom_core/config.py": "195aa16b7063fccab5a3237760cb46323dc2a6073e327892d51a3077cfdf9472",
+    "axiom_core/exploration/information_gain.py": "6128b7b12fadf5630fa3f8d4bb7f9af63b3355222b50f0542ecc51e7c21776af",
+    "axiom_core/exploration/novelty.py": "028390bca9a0d4aed1e06c7134eddafd09142c05ed4374ba9f2c92d227d61284",
+    "axiom_core/exploration/reversibility.py": "b9ac335b3313c9eb629ec16a24d3312ceaeb5862bb9ff501091b20402a9c7ea2",
+    "axiom_core/exploration/risk.py": "5846b6afe3d447157e17d0cd43353caefcda13fd4dc36ea2ddad8eda8587d569",
+    "axiom_core/exploration/selector.py": "04cf5a1b2f2ab0a3f9b8a64005cef549ad463e5fe72dd87157422e7b54f945bc",
+    "axiom_core/goals/induction.py": "23ee17c2a9a5c93c94d5a5c62a3fd68378d567c2c2c48147e3a094f8fba3eb25",
+    "axiom_core/goals/posterior.py": "c32b4c5e7b462ce44787e4d9b5b51f5ee2113734241195cd12ddcba27c008d19",
+    "axiom_core/perception/components.py": "dcb8f198006c8134c241d909e908c93d754130d6b3c57b408b01f9a2c65471c6",
+    "axiom_core/perception/scene_graph.py": "885bbd6d96f3f22ba694d8cdc7cdb3fd909127f6d8e6e591b400c3aacc9dbdc0",
+    "axiom_core/perception/tracking.py": "141d12596ad3d7ad7c94c9e1916f87ff9cbcec24d58923bd9e910fe6f22bc4fa",
+    "axiom_core/perception/transitions.py": "5e2e38f3155ade63eb7f3665d3a26875bf51fc19903bb7be821d6fb2ee44a286",
+    "axiom_core/planning/search.py": "c0fa6271292d0a9012ca9ef93f202ee239d3ba00e08d89af43dc23df47db0e51",
+    "axiom_core/runtime.py": "787912b9b4f139d624dad7739e59185c3200bbb6c8ab10d8ee67d1cc42ab3ef7",
+    "axiom_core/types.py": "087c09178095aac53ee7bed53955a7835fcc8b13e5a52ad1bc6b9bf1f5c8b377",
+    "competition/agent/my_agent.py": "a71f02173a39c018050d86ecfb42b81e37c243250a4e85bd6b2a4263cf20e0a0"
+  }
+}
