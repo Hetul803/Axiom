@@ -125,6 +125,23 @@ class AxiomConfig:
     w_information:float=1.0; w_progress:float=.8; w_novelty:float=.75; w_reversibility:float=.35; w_risk:float=1.2; w_repeat:float=.8; w_cost:float=.02; neural_proposer_enabled:bool=False
 
 
+%%writefile /kaggle/working/axiom_core/diagnostics.py
+from __future__ import annotations
+from dataclasses import dataclass, field
+import html, json
+@dataclass
+class DiagnosticRecorder:
+    enabled: bool = False
+    events: list[dict] = field(default_factory=list)
+    def record(self, **event):
+        if self.enabled: self.events.append(event)
+    def jsonl(self): return '\n'.join(json.dumps(e,sort_keys=True,default=str) for e in self.events)
+def render_html(events:list[dict], path):
+    rows=[]
+    for i,e in enumerate(events): rows.append(f"<section><h2>Step {i}</h2><pre>{html.escape(json.dumps(e,indent=2,default=str))}</pre></section>")
+    open(path,'w').write('<html><body><h1>Axiom V2 Replay</h1>'+''.join(rows)+'</body></html>')
+
+
 %%writefile /kaggle/working/axiom_core/exploration/__init__.py
 
 
@@ -199,6 +216,32 @@ def update(goals, scene, transition=None): return goals or __import__('axiom_cor
 %%writefile /kaggle/working/axiom_core/goals/predicates.py
 def contains_value(scene,value): return value in scene.features.get('values',())
 def removed_value(scene,value): return value not in scene.features.get('values',())
+
+
+%%writefile /kaggle/working/axiom_core/mechanics.py
+from __future__ import annotations
+from dataclasses import dataclass
+from typing import Any
+@dataclass(frozen=True)
+class MechanicEvidence:
+    name: str
+    action: Any
+    confidence: float
+    rule_hint: tuple
+    reason: str
+def detect_mechanics(transition):
+    out=[]
+    moved=[]
+    for old,new in transition.mapping.items():
+        po=next(c for c in transition.previous.components if c.id==old); no=next(c for c in transition.result.components if c.id==new)
+        dy=round(no.centroid[0]-po.centroid[0]); dx=round(no.centroid[1]-po.centroid[1])
+        if (dy,dx)!=(0,0): moved.append((po,no,(dy,dx)))
+    if moved: out.append(MechanicEvidence('movement_or_push', transition.action, min(0.9,0.45+0.2*len(moved)), ('move', moved[0][0].value, moved[0][2]), 'object displacement after action'))
+    if transition.deleted: out.append(MechanicEvidence('collection_or_disappearance', transition.action, .65, ('collect', transition.deleted), 'object disappeared after action'))
+    if transition.created: out.append(MechanicEvidence('appearance_or_teleport', transition.action, .55, ('appear', transition.created), 'object appeared after action'))
+    if len(transition.changed_cells)>0 and not moved and not transition.created and not transition.deleted: out.append(MechanicEvidence('toggle_or_recolor', transition.action, .5, ('toggle',), 'cell values changed without object motion'))
+    if len(moved)>=2: out.append(MechanicEvidence('push', transition.action, .7, ('push',), 'multiple objects displaced together'))
+    return tuple(out)
 
 
 %%writefile /kaggle/working/axiom_core/memory/__init__.py
@@ -346,6 +389,29 @@ from axiom_core.causality.interpreter import execute
 def simulate(grid,hypothesis,action): return execute(grid,hypothesis.rule,action)
 
 
+%%writefile /kaggle/working/axiom_core/roles.py
+from __future__ import annotations
+def infer_controllable_scores(scene, transitions, action_semantics=None):
+    scores={c.id:0.05 for c in scene.components}
+    for t in transitions[-12:]:
+        for old,new in t.mapping.items():
+            po=next((c for c in t.previous.components if c.id==old),None); no=next((c for c in t.result.components if c.id==new),None)
+            if po and no and po.centroid!=no.centroid:
+                scores[no.id]=scores.get(no.id,0)+1.0
+                if po.value==no.value: scores[no.id]+=0.25
+    total=sum(scores.values()) or 1
+    return {k:v/total for k,v in sorted(scores.items(), key=lambda kv:kv[1], reverse=True)}
+def infer_object_roles(scene, controllable_scores=None):
+    controllable_scores=controllable_scores or {}
+    roles={}
+    for c in scene.components:
+        r={'player':controllable_scores.get(c.id,0.05),'movable':0.15,'wall':0.12,'target':0.12,'collectible':0.12,'hazard':0.05,'key':0.07,'door':0.07,'switch':0.07,'portal':0.06,'counter':0.02,'pattern':0.1}
+        if c.area==1: r['player']+=0.08; r['collectible']+=0.05
+        if c.border: r['wall']+=0.1
+        s=sum(r.values()); roles[c.id]={k:v/s for k,v in r.items()}
+    return roles
+
+
 %%writefile /kaggle/working/axiom_core/runtime.py
 from __future__ import annotations
 import time, random
@@ -361,20 +427,24 @@ from axiom_core.types import Hypothesis
 from axiom_core.exploration.selector import choose
 from axiom_core.goals.posterior import update as update_goals
 from axiom_core.causality.action_semantics import ActionSemanticsPosterior
+from axiom_core.state_graph import StateActionGraph
+from axiom_core.diagnostics import DiagnosticRecorder
+from axiom_core.roles import infer_controllable_scores, infer_object_roles
+from axiom_core.mechanics import detect_mechanics
 class Deadline:
     def __init__(self, seconds): self.end=time.monotonic()+max(0.001,seconds)
     def expired(self): return time.monotonic()>=self.end
     def remaining(self): return max(0.0,self.end-time.monotonic())
 class AxiomRuntime:
     def __init__(self, config:AxiomConfig|None=None):
-        self.config=config or AxiomConfig(); self.rng=random.Random(self.config.seed); self.episode=Episode(); self.hypotheses=(); self.goals=(); self.tried=set(); self.last_scene=None; self.last_obs=None; self.last_action=None; self.grammar={}; self.loop_counts={}; self.action_semantics=ActionSemanticsPosterior(); self.game_grammar={}
-    def reset_episode(self): self.episode=Episode(); self.hypotheses=(); self.goals=(); self.tried=set(); self.last_scene=None; self.last_obs=None; self.last_action=None; self.loop_counts={}; self.action_semantics=ActionSemanticsPosterior(); self.game_grammar={}
+        self.config=config or AxiomConfig(); self.rng=random.Random(self.config.seed); self.episode=Episode(); self.hypotheses=(); self.goals=(); self.tried=set(); self.last_scene=None; self.last_obs=None; self.last_action=None; self.grammar={}; self.loop_counts={}; self.action_semantics=ActionSemanticsPosterior(); self.game_grammar={}; self.state_graph=StateActionGraph(); self.diagnostics=DiagnosticRecorder(False); self.mechanics=[]; self.roles={}; self.last_diag={}; self.state_graph=StateActionGraph(); self.diagnostics=DiagnosticRecorder(False); self.mechanics=[]; self.roles={}; self.last_diag={}
+    def reset_episode(self): self.episode=Episode(); self.hypotheses=(); self.goals=(); self.tried=set(); self.last_scene=None; self.last_obs=None; self.last_action=None; self.loop_counts={}; self.action_semantics=ActionSemanticsPosterior(); self.game_grammar={}; self.state_graph=StateActionGraph(); self.diagnostics=DiagnosticRecorder(False); self.mechanics=[]; self.roles={}; self.last_diag={}
     def observe(self, obs:Observation, deadline:Deadline):
-        scene=build_scene(obs.grid); self.episode.observations.append(obs)
+        scene=build_scene(obs.grid); self.episode.observations.append(obs); current_hash=self.state_graph.observe_state(obs.grid, obs.status.value)
         self.action_semantics.ensure(obs.legal_actions)
         if not self.hypotheses: self.hypotheses=prior_hypotheses(obs.legal_actions,self.config.particle_count)
         if self.last_scene is not None and self.last_action is not None and not deadline.expired():
-          mapping=track(self.last_scene,scene); trans=Transition(self.last_scene,self.last_action,scene,mapping,diff_cells(self.last_scene.grid,scene.grid),tuple(set(c.id for c in scene.components)-set(mapping.values())),tuple(set(c.id for c in self.last_scene.components)-set(mapping.keys())),obs.status); self.episode.transitions.append(trans)
+          mapping=track(self.last_scene,scene); trans=Transition(self.last_scene,self.last_action,scene,mapping,diff_cells(self.last_scene.grid,scene.grid),tuple(set(c.id for c in scene.components)-set(mapping.values())),tuple(set(c.id for c in self.last_scene.components)-set(mapping.keys())),obs.status); self.episode.transitions.append(trans); prev_hash=grid_hash(self.last_scene.grid); self.state_graph.record(prev_hash,self.last_action,current_hash,len(trans.changed_cells))
           moved_delta=None
           if mapping:
             old,new=next(iter(mapping.items()))
@@ -382,20 +452,53 @@ class AxiomRuntime:
           self.action_semantics.update_from_delta(self.last_action,moved_delta,len(trans.changed_cells))
           self.hypotheses=update(self.hypotheses,self.last_scene.grid,self.last_action,scene.grid); rules=induce_rules(trans,self.config.max_hypotheses); additions=tuple(Hypothesis(r,-6.0,provenance="induced") for r in rules[:self.config.max_mutations]); self.hypotheses=normalize((self.hypotheses+additions)[:self.config.particle_count])
           if effective_sample_size(self.hypotheses)<max(2,self.config.particle_count/4): self.hypotheses=resample(self.hypotheses,self.config.particle_count,self.config.seed+len(self.episode.transitions))
-          self.goals=update_goals(self.goals,scene,trans)
+          self.mechanics.extend(detect_mechanics(trans)); self.goals=update_goals(self.goals,scene,trans)
         else: self.goals=update_goals(self.goals,scene,None)
-        self.last_scene=scene; self.last_obs=obs; return scene
+        self.roles=infer_object_roles(scene, infer_controllable_scores(scene, self.episode.transitions, self.action_semantics)); self.last_scene=scene; self.last_obs=obs; return scene
     def choose_action(self, obs:Observation, per_action_ms:int|None=None):
         deadline=Deadline((per_action_ms or self.config.per_action_ms)/1000); legal=list(obs.legal_actions)
         if not legal: return None
         try:
-          scene=self.observe(obs,deadline); h=grid_hash(obs.grid); action,diag=choose(self.config,self.hypotheses,legal,h,self.tried,deadline.expired)
-          if action not in legal or deadline.expired(): action=legal[0]
+          scene=self.observe(obs,deadline); h=grid_hash(obs.grid)
+          frontier=self.state_graph.frontier_actions(h,legal)
+          if frontier and len(self.episode.transitions)<max(1,len(legal)*2):
+            action=frontier[0]; diag={'mode':'systematic_frontier','frontier':[str(a) for a in frontier[:6]]}
+          else:
+            action,diag=choose(self.config,self.hypotheses,legal,h,self.tried,deadline.expired)
+            if self.state_graph.repeated_ineffective(h, action):
+              alternatives=[a for a in legal if not self.state_graph.repeated_ineffective(h,a)]
+              if alternatives: action=alternatives[0]; diag['loop_avoidance']='switched_from_ineffective_action'
+          if action not in legal or deadline.expired(): action=legal[0]; diag['fallback']='deadline_or_illegal'
         except Exception as exc:
           action=legal[0]; diag={"fallback":str(exc)}; h=grid_hash(obs.grid)
-        self.tried.add((h,str(action))); self.episode.actions.append(action); self.last_action=action; self.loop_counts[h]=self.loop_counts.get(h,0)+1; self.episode.timeline.append({"action":str(action),"state":h,"top_hypotheses":[{"rule":p.rule.operations[0].name,"prob":round(__import__('math').exp(p.log_weight),3)} for p in top(self.hypotheses,3)],"goals":[g.name for g in self.goals[:3]],"semantics":{str(a):self.action_semantics.best(a) for a in obs.legal_actions},"diag":diag})
+        self.tried.add((h,str(action))); self.episode.actions.append(action); self.last_action=action; self.loop_counts[h]=self.loop_counts.get(h,0)+1; self.last_diag={"frame":obs.frame_index,"legal_actions":[str(a) for a in legal],"chosen_action":str(action),"state":h,"component_count":len(scene.components) if 'scene' in locals() else 0,"roles":self.roles,"mechanics":[m.name for m in self.mechanics[-5:]],"repeated_state_action":self.state_graph.tried(h,action)>0,"loop_score":self.state_graph.loop_score(h),"fallback_used":"fallback" in diag,"diag":diag}; self.diagnostics.record(**self.last_diag); self.episode.timeline.append({"action":str(action),"state":h,"top_hypotheses":[{"rule":p.rule.operations[0].name,"prob":round(__import__('math').exp(p.log_weight),3)} for p in top(self.hypotheses,3)],"goals":[g.name for g in self.goals[:3]],"semantics":{str(a):self.action_semantics.best(a) for a in obs.legal_actions},"diag":diag})
         if len(self.episode.timeline)>self.config.max_history: self.episode.timeline=self.episode.timeline[-self.config.max_history:]
         return action
+
+
+%%writefile /kaggle/working/axiom_core/simple_planner.py
+from __future__ import annotations
+from collections import deque
+def find_value(grid, value):
+    for y,row in enumerate(grid):
+        for x,v in enumerate(row):
+            if v==value: return (y,x)
+    return None
+def plan_to_adjacent(grid, start_value, target_values, legal=('up','down','left','right'), walls=frozenset({1}), max_depth=40):
+    start=find_value(grid,start_value)
+    targets={pos for tv in target_values for pos in [find_value(grid,tv)] if pos is not None}
+    if start is None or not targets: return []
+    h=len(grid); w=len(grid[0]) if h else 0; moves={'up':(-1,0),'down':(1,0),'left':(0,-1),'right':(0,1)}; q=deque([(start,[])]); seen={start}
+    while q:
+        (y,x),path=q.popleft()
+        if any(abs(y-ty)+abs(x-tx)<=1 for ty,tx in targets): return path
+        if len(path)>=max_depth: continue
+        for a,(dy,dx) in moves.items():
+            if a not in legal: continue
+            ny,nx=y+dy,x+dx
+            if 0<=ny<h and 0<=nx<w and (ny,nx) not in seen and grid[ny][nx] not in walls:
+                seen.add((ny,nx)); q.append(((ny,nx),path+[a]))
+    return []
 
 
 %%writefile /kaggle/working/axiom_core/startup_safety.py
@@ -407,6 +510,58 @@ def classify_action(action):
     s=str(action).lower(); destructive=any(w in s for w in ('delete','reset','submit','destroy','purchase','danger'))
     return ActionSafety(reversible=not destructive, destructive=destructive, requires_approval=destructive)
 def redact(value): return '<redacted>' if any(w in str(value).lower() for w in ('password','token','secret','key')) else value
+
+
+%%writefile /kaggle/working/axiom_core/state_graph.py
+from __future__ import annotations
+from dataclasses import dataclass, field
+from collections import deque
+from typing import Any
+from axiom_core.types import Grid, grid_hash
+@dataclass
+class StateNode:
+    state_hash: str
+    first_grid: Grid
+    visits: int = 0
+    terminal: str = 'active'
+@dataclass
+class StateActionEdge:
+    source: str
+    action: str
+    target: str
+    count: int = 1
+    changed: int = 0
+    reversible: bool = False
+    ineffective: bool = False
+@dataclass
+class StateActionGraph:
+    nodes: dict[str, StateNode] = field(default_factory=dict)
+    edges: dict[tuple[str,str], StateActionEdge] = field(default_factory=dict)
+    action_attempts: dict[tuple[str,str], int] = field(default_factory=dict)
+    def observe_state(self, grid:Grid, terminal='active') -> str:
+        h=grid_hash(grid); node=self.nodes.setdefault(h, StateNode(h, grid, 0, terminal)); node.visits += 1; node.terminal=terminal; return h
+    def record(self, source:str, action:Any, target:str, changed:int) -> None:
+        key=(source,str(action)); self.action_attempts[key]=self.action_attempts.get(key,0)+1
+        edge=self.edges.get(key)
+        if edge is None: edge=StateActionEdge(source,str(action),target,1,changed,False,changed==0); self.edges[key]=edge
+        else: edge.target=target; edge.count+=1; edge.changed=changed; edge.ineffective=edge.ineffective and changed==0
+        rev=self.edges.get((target,str(action)))
+        if rev and rev.target==source: edge.reversible=True; rev.reversible=True
+    def tried(self, state_hash:str, action:Any)->int: return self.action_attempts.get((state_hash,str(action)),0)
+    def frontier_actions(self, state_hash:str, legal:list[Any]) -> list[Any]: return [a for a in legal if self.tried(state_hash,a)==0]
+    def repeated_ineffective(self, state_hash:str, action:Any)->bool:
+        edge=self.edges.get((state_hash,str(action))); return bool(edge and edge.ineffective and edge.count>=1)
+    def loop_score(self, state_hash:str)->float:
+        n=self.nodes.get(state_hash); return min(1.0, max(0, (n.visits-1)/5)) if n else 0.0
+    def shortest_path(self, start:str, goal:str):
+        q=deque([(start,[])]); seen={start}
+        while q:
+            s,path=q.popleft()
+            if s==goal: return path
+            for e in self.edges.values():
+                if e.source==s and e.target not in seen:
+                    seen.add(e.target); q.append((e.target,path+[e.action]))
+        return []
 
 
 %%writefile /kaggle/working/axiom_core/types.py

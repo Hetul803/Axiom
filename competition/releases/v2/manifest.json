@@ -1,0 +1,13 @@
+{
+  "agent_sha256": "043c61c7fc87a1bf1a50f45869452617e1a8338acbf61ae3f93f989d99cc9c78",
+  "notebook_sha256": "f65203e1c8a8f9c24853145d7352c32f27f025142e588b85b69076b403ce836c",
+  "offline_results": {
+    "completed": true,
+    "fallback_rate": 0.0,
+    "mean_latency_ms": 1.2894074288418604,
+    "p95_latency_ms": 1.4599080004700227,
+    "repeated_action_rate": 0.047619047619047616,
+    "steps": 21
+  },
+  "source": "v2 intelligence build"
+}

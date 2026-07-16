@@ -1,5 +1,5 @@
 %%writefile /tmp/my_agent.py
-# AXIOM_FINAL_AGENT_SHA256=8fa165a7abe66613e1cec31827b03d6c5ed413c071d09668fa8330e2c4747a3c
+# AXIOM_FINAL_AGENT_SHA256=043c61c7fc87a1bf1a50f45869452617e1a8338acbf61ae3f93f989d99cc9c78
 from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
@@ -54,6 +54,26 @@ class Hypothesis: rule:Rule; log_weight:float; loss:float=0.0; contradictions:in
 class Goal: name:str; probability:float; target:Any=None; evidence:tuple[str,...]=()
 @dataclass
 class Episode: observations:list[Observation]=field(default_factory=list); transitions:list[Transition]=field(default_factory=list); actions:list[Action]=field(default_factory=list); timeline:list[dict[str,Any]]=field(default_factory=list)
+@dataclass
+class StateNode:
+    state_hash: str; first_grid: Grid; visits: int = 0; terminal: str = 'active'
+@dataclass
+class StateActionEdge:
+    source: str; action: str; target: str; count: int = 1; changed: int = 0; reversible: bool = False; ineffective: bool = False
+@dataclass
+class StateActionGraph:
+    nodes: dict[str, StateNode] = field(default_factory=dict); edges: dict[tuple[str,str], StateActionEdge] = field(default_factory=dict); action_attempts: dict[tuple[str,str], int] = field(default_factory=dict)
+    def observe_state(self, grid:Grid, terminal='active'):
+        h=grid_hash(grid); node=self.nodes.setdefault(h, StateNode(h, grid, 0, terminal)); node.visits += 1; node.terminal=terminal; return h
+    def record(self, source, action, target, changed):
+        key=(source,str(action)); self.action_attempts[key]=self.action_attempts.get(key,0)+1; edge=self.edges.get(key)
+        if edge is None: self.edges[key]=StateActionEdge(source,str(action),target,1,changed,False,changed==0)
+        else: edge.target=target; edge.count+=1; edge.changed=changed; edge.ineffective=edge.ineffective and changed==0
+    def tried(self, state_hash, action): return self.action_attempts.get((state_hash,str(action)),0)
+    def frontier_actions(self, state_hash, legal): return [a for a in legal if self.tried(state_hash,a)==0]
+    def repeated_ineffective(self, state_hash, action):
+        edge=self.edges.get((state_hash,str(action))); return bool(edge and edge.ineffective and edge.count>=1)
+
 @dataclass(frozen=True)
 class AxiomConfig:
     seed:int=0; particle_count:int=64; max_hypotheses:int=96; max_mutations:int=32; max_history:int=256; planning_depth:int=18; coordinate_candidate_limit:int=64; per_action_ms:int=35; global_seconds:int=660
@@ -212,13 +232,13 @@ class Deadline:
     def expired(self): return time.monotonic()>=self.end
 class AxiomRuntime:
     def __init__(self, config=None):
-        self.config=config or AxiomConfig(); self.rng=random.Random(self.config.seed); self.episode=Episode(); self.hypotheses=(); self.goals=(); self.tried=set(); self.last_scene=None; self.last_action=None; self.loop_counts={}; self.action_semantics=ActionSemanticsPosterior(); self.game_grammar={}
+        self.config=config or AxiomConfig(); self.rng=random.Random(self.config.seed); self.episode=Episode(); self.hypotheses=(); self.goals=(); self.tried=set(); self.last_scene=None; self.last_action=None; self.loop_counts={}; self.action_semantics=ActionSemanticsPosterior(); self.state_graph=StateActionGraph(); self.mechanics=[]; self.game_grammar={}; self.state_graph=StateActionGraph(); self.mechanics=[]
     def reset_episode(self): self.episode=Episode(); self.hypotheses=(); self.goals=(); self.tried=set(); self.last_scene=None; self.last_action=None; self.loop_counts={}; self.action_semantics=ActionSemanticsPosterior()
     def observe(self, obs, deadline):
-        scene=build_scene(obs.grid); self.episode.observations.append(obs); self.action_semantics.ensure(obs.legal_actions)
+        scene=build_scene(obs.grid); self.episode.observations.append(obs); current_hash=self.state_graph.observe_state(obs.grid, obs.status.value); self.action_semantics.ensure(obs.legal_actions)
         if not self.hypotheses: self.hypotheses=prior_hypotheses(obs.legal_actions,self.config.particle_count)
         if self.last_scene is not None and self.last_action is not None and not deadline.expired():
-          mapping=track(self.last_scene,scene); trans=Transition(self.last_scene,self.last_action,scene,mapping,diff_cells(self.last_scene.grid,scene.grid),tuple(set(c.id for c in scene.components)-set(mapping.values())),tuple(set(c.id for c in self.last_scene.components)-set(mapping.keys())),obs.status); self.episode.transitions.append(trans)
+          mapping=track(self.last_scene,scene); trans=Transition(self.last_scene,self.last_action,scene,mapping,diff_cells(self.last_scene.grid,scene.grid),tuple(set(c.id for c in scene.components)-set(mapping.values())),tuple(set(c.id for c in self.last_scene.components)-set(mapping.keys())),obs.status); self.episode.transitions.append(trans); prev_hash=grid_hash(self.last_scene.grid); self.state_graph.record(prev_hash,self.last_action,current_hash,len(trans.changed_cells))
           moved_delta=None
           if mapping:
             old,new=next(iter(mapping.items())); oc=next(c for c in self.last_scene.components if c.id==old); nc=next(c for c in scene.components if c.id==new); moved_delta=(round(nc.centroid[0]-oc.centroid[0]), round(nc.centroid[1]-oc.centroid[1]))
@@ -231,7 +251,13 @@ class AxiomRuntime:
         deadline=Deadline((per_action_ms or self.config.per_action_ms)/1000); legal=list(obs.legal_actions)
         if not legal: return None
         try:
-          scene=self.observe(obs,deadline); h=grid_hash(obs.grid); action,diag=select_action(self.config,self.hypotheses,legal,h,self.tried,deadline.expired)
+          scene=self.observe(obs,deadline); h=grid_hash(obs.grid); frontier=self.state_graph.frontier_actions(h,legal)
+          if frontier and len(self.episode.transitions)<max(1,len(legal)*2): action=frontier[0]; diag={'mode':'systematic_frontier'}
+          else:
+            action,diag=select_action(self.config,self.hypotheses,legal,h,self.tried,deadline.expired)
+            if self.state_graph.repeated_ineffective(h, action):
+              alternatives=[a for a in legal if not self.state_graph.repeated_ineffective(h,a)]
+              if alternatives: action=alternatives[0]
           if action not in legal or deadline.expired(): action=legal[0]
         except Exception:
           action=legal[0]; h=grid_hash(obs.grid)

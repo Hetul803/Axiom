@@ -1,8 +1,8 @@
 # Ready to Submit Handoff
 
 - Fully embedded code: yes, Cell 2 writes the complete self-contained agent to `/tmp/my_agent.py`.
-- Agent SHA-256: `8fa165a7abe66613e1cec31827b03d6c5ed413c071d09668fa8330e2c4747a3c`
-- Notebook SHA-256: `da2dfa489335610478ca8b666f300e86ca663fb5a4d34e8bd32cf44a4fe5041b`
+- Agent SHA-256: `043c61c7fc87a1bf1a50f45869452617e1a8338acbf61ae3f93f989d99cc9c78`
+- Notebook SHA-256: `f65203e1c8a8f9c24853145d7352c32f27f025142e588b85b69076b403ce836c`
 - Cell order: Cell 1 install, Cell 2 write agent, Cell 3 run official competition rerun, Cell 4 dummy non-rerun submission.
 - Kaggle settings: internet disabled, CPU/None accelerator, Python, ARC Prize 2026 ARC-AGI-3 data attached.
 - Save & Run All behavior: outside rerun, Cell 4 creates `/kaggle/working/submission.parquet`.
