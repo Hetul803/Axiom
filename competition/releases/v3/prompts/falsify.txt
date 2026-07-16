@@ -1,0 +1,1 @@
+Return {"assumptions":[],"counterexamples":[],"experiments":[{"action":{},"distinguishes_models":[],"predicted_outcomes":[],"risk":0.0,"reversibility":0.0,"evidence_transition_ids":[]}],"ranking":[]}. Choose the smallest safe legal experiment.

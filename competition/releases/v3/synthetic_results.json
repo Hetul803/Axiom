@@ -1,0 +1,122 @@
+{
+  "evaluation": "synthetic hidden-permutation exploration; no official ARC environments or local 27B model available",
+  "games": 12,
+  "solved": 6,
+  "solve_rate": 0.5,
+  "mean_actions": 27.5,
+  "mean_repeated_rate": 0.0,
+  "mean_action_ms": 0.13002320037538942,
+  "p95_action_ms": 0.23802700002306665,
+  "average_llm_calls": 0,
+  "average_generated_tokens": 0,
+  "details": [
+    {
+      "solved": true,
+      "actions": 6,
+      "repeated_rate": 0.0,
+      "mean_action_ms": 0.13484816664307195,
+      "p95_action_ms": 0.15616700000009587,
+      "llm_calls": 0,
+      "generated_tokens": 0
+    },
+    {
+      "solved": false,
+      "actions": 39,
+      "repeated_rate": 0.0,
+      "mean_action_ms": 0.14819247500668098,
+      "p95_action_ms": 0.23802700002306665,
+      "llm_calls": 0,
+      "generated_tokens": 0
+    },
+    {
+      "solved": false,
+      "actions": 39,
+      "repeated_rate": 0.0,
+      "mean_action_ms": 0.12947959999110026,
+      "p95_action_ms": 0.17638200006331317,
+      "llm_calls": 0,
+      "generated_tokens": 0
+    },
+    {
+      "solved": true,
+      "actions": 26,
+      "repeated_rate": 0.0,
+      "mean_action_ms": 0.12734057692289122,
+      "p95_action_ms": 0.17711500004224945,
+      "llm_calls": 0,
+      "generated_tokens": 0
+    },
+    {
+      "solved": true,
+      "actions": 6,
+      "repeated_rate": 0.0,
+      "mean_action_ms": 0.12841783336625667,
+      "p95_action_ms": 0.15277800002877484,
+      "llm_calls": 0,
+      "generated_tokens": 0
+    },
+    {
+      "solved": false,
+      "actions": 39,
+      "repeated_rate": 0.0,
+      "mean_action_ms": 0.12888602500424895,
+      "p95_action_ms": 0.18447100001139916,
+      "llm_calls": 0,
+      "generated_tokens": 0
+    },
+    {
+      "solved": false,
+      "actions": 39,
+      "repeated_rate": 0.0,
+      "mean_action_ms": 0.15342572500571805,
+      "p95_action_ms": 0.22179900008723052,
+      "llm_calls": 0,
+      "generated_tokens": 0
+    },
+    {
+      "solved": true,
+      "actions": 26,
+      "repeated_rate": 0.0,
+      "mean_action_ms": 0.12405950000216902,
+      "p95_action_ms": 0.15626400011115038,
+      "llm_calls": 0,
+      "generated_tokens": 0
+    },
+    {
+      "solved": true,
+      "actions": 6,
+      "repeated_rate": 0.0,
+      "mean_action_ms": 0.11653533332870818,
+      "p95_action_ms": 0.12128699995628267,
+      "llm_calls": 0,
+      "generated_tokens": 0
+    },
+    {
+      "solved": false,
+      "actions": 39,
+      "repeated_rate": 0.0,
+      "mean_action_ms": 0.1295379250109363,
+      "p95_action_ms": 0.23390600006223394,
+      "llm_calls": 0,
+      "generated_tokens": 0
+    },
+    {
+      "solved": false,
+      "actions": 39,
+      "repeated_rate": 0.0,
+      "mean_action_ms": 0.1251404750007623,
+      "p95_action_ms": 0.15866199998981756,
+      "llm_calls": 0,
+      "generated_tokens": 0
+    },
+    {
+      "solved": true,
+      "actions": 26,
+      "repeated_rate": 0.0,
+      "mean_action_ms": 0.11441476922212902,
+      "p95_action_ms": 0.15021199999409873,
+      "llm_calls": 0,
+      "generated_tokens": 0
+    }
+  ]
+}

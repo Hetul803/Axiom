@@ -1,0 +1,1 @@
+Return {"model_names":[],"goal_name":"...","plan":[{"action":{},"expected_state_key":"..."}],"risk":0.0,"assumptions":[],"verified":false}. Use only verified models and legal actions; simulate every step.

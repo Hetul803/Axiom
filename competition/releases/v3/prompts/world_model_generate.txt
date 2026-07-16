@@ -1,0 +1,1 @@
+Generate three diverse compact executable models: the simplest model, the most accurate model, and an alternate-ontology falsification model. State explicit assumptions, general transition rules, predicted outcomes, confidence, and evidence transition IDs. Return three separate ```python fenced blocks.

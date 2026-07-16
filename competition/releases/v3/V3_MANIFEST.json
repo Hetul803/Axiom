@@ -1,0 +1,18 @@
+{
+  "version": "3",
+  "generated_utc": "2026-07-16T17:18:47.372729+00:00",
+  "source_commit": "df95ba748e234e85534160e31b8ec0c670b4d6b0",
+  "agent_sha256": "f1379ea81de9ad6ab7b8f4c4679583aac7da4080d88cad38a5e7735f0e0766e5",
+  "notebook_sha256": "d3cb914ce8a5ee91e9780eebadc22e2a359aa615c2225fa62eb14436d324f664",
+  "sources": {
+    "source/axiom_scientist.py": "39b5e502d68ccb2ffbbf80dd10997c2ab03d201e666a9452e6c34e92a561eb92",
+    "source/frozen_v2.py": "6e1939198c22318c7221801194fe3681903d2d9893e8216b8c69e3e3d22c8a29",
+    "source/my_agent_wrapper.py": "7354df44c903f78fcef05d2cda88ef6f2a6e9dca24d86280181de865b1f0bed7"
+  },
+  "model": "vrfai/Qwen3.6-27B-FP8",
+  "vllm": {
+    "host": "127.0.0.1",
+    "port": 1234,
+    "prefix_caching": true
+  }
+}

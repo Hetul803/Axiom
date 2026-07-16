@@ -1,0 +1,2 @@
+import React,{useState}from'react';
+export default function App(){const[log,setLog]=useState<any[]>([]);return <main><h1>Axiom Runtime</h1><p>Adaptive-environment research platform.</p><button onClick={()=>setLog([...log,{event:'manual step'}])}>Manual Step</button><button onClick={()=>setLog([...log,{event:'autonomous step'}])}>Autonomous Learn</button><pre>{JSON.stringify(log,null,2)}</pre></main>}

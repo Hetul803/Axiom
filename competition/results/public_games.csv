@@ -1,0 +1,2 @@
+game_id,status,failure_category,notes
+ALL_NOT_RUN,not_run,official_runtime_unavailable,"Official arc-agi runtime/public assets unavailable in this container."

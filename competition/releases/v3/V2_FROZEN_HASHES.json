@@ -1,0 +1,15 @@
+{
+  "algorithm": "sha256",
+  "root": "competition/releases/v2",
+  "files": {
+    "CHANGES_FROM_V1.md": "a9046d37de2d8aed297eb401fcc2fb82b6a12df48bb7e8c4270f937f669c5314",
+    "COPY_PASTE_INTO_KAGGLE.md": "01577b84f54a44ce3692fedbeb99766322ee5504551cbe324ba6a18fef3993ab",
+    "FAILURE_ANALYSIS.md": "7f39c11ee4b359c15a76fc0c8b6128a95c3abb0c7bf4bc9ab8d09e1d3cd96b61",
+    "PUBLIC_RESULTS.md": "3ec600203a5de03322c8a9d158a2305a96ecbe3ec2e9541a32725608f532c82c",
+    "axiom_submission.ipynb": "f65203e1c8a8f9c24853145d7352c32f27f025142e588b85b69076b403ce836c",
+    "manifest.json": "7cab5a101587877d0db751b85a8e19ffd47fca641e5962707b80543913f2dfff",
+    "my_agent.py": "043c61c7fc87a1bf1a50f45869452617e1a8338acbf61ae3f93f989d99cc9c78",
+    "offline_results.html": "7a523ae9adad26160e46bfee5642d1b1823216e06a2c23eaf9062fecbcc0c8bb",
+    "offline_results.json": "560860f2c4fbb4ffb91e5a3b2dcce8fdb55d957a31e7366a4903e69e5feacb5f"
+  }
+}
