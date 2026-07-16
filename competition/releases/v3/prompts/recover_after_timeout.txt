@@ -1,0 +1,1 @@
+Return strict JSON with a compact evidence summary and one deterministic safe legal action ranked by novelty, reversibility, and low terminal risk. Do not invent model claims.

@@ -1,0 +1,1 @@
+Given exact grid RLE, components, correspondences, changed cells, and residuals, return {"ontologies": [{"name":"...","assumptions":[],"roles":{},"latent_state":{},"explains_transition_ids":[],"unexplained_transition_ids":[],"confidence":0.0}]}. Prefer revising ontology over coordinate exceptions.

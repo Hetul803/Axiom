@@ -1,0 +1,1 @@
+Return a simpler reusable GeneratedWorldModel preserving replay on all completed levels. Remove coordinates and visual-instance details; retain only verified action semantics, mechanics, roles, and goal grammar.

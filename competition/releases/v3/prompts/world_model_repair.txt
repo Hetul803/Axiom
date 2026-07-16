@@ -1,0 +1,1 @@
+Repair the candidate against the supplied smallest counterexample while preserving every earlier replay. Do not add coordinate-specific exceptions or memorize frames. Return only the complete replacement class in a ```python fenced block.

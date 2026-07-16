@@ -1,0 +1,1 @@
+Return {"goals":[{"goal_name":"...","success_predicate":"...","progress_measure":"...","supporting_evidence":[],"contradicting_evidence":[],"confidence":0.0}]}. Predicates must be executable by the candidate model and evidence must cite transition IDs.
